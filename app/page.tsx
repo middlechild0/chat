@@ -1,103 +1,196 @@
-import Image from "next/image";
+import { useState, useEffect, useRef } from 'react';
+import io from 'socket.io-client';
 
 export default function Home() {
+  const [clientId, setClientId] = useState('');
+  const [registered, setRegistered] = useState(false);
+  const [message, setMessage] = useState('');
+  const [recipient, setRecipient] = useState('');
+  const [messages, setMessages] = useState<{ type: string; from?: string; to?: string; message?: string; error?: string; timestamp: any }[]>([]);
+  const [availableClients, setAvailableClients] = useState<string[]>([]);
+  const socketRef = useRef<ReturnType<typeof io> | null>(null);
+  
+  useEffect(() => {
+    // Create the socket connection
+    socketRef.current = io();
+    
+    // Set up event listeners
+    socketRef.current.on('clientList', (clients: string[]) => {
+      // Filter out our own ID
+      setAvailableClients(clients.filter((id: string) => id !== clientId));
+    });
+    
+    socketRef.current.on('receiveMessage', (data) => {
+      setMessages(prev => [...prev, {
+        type: 'received',
+        from: data.from,
+        message: data.message,
+        timestamp: data.timestamp
+      }]);
+    });
+    
+    socketRef.current.on('messageSent', (data) => {
+      setMessages(prev => [...prev, {
+        type: 'sent',
+        to: data.to,
+        message: data.message,
+        timestamp: data.timestamp
+      }]);
+    });
+    
+    socketRef.current.on('messageError', (data) => {
+      setMessages(prev => [...prev, {
+        type: 'error',
+        to: data.to,
+        error: data.error,
+        timestamp: new Date()
+      }]);
+    });
+    
+    // Clean up on unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [clientId]);
+  
+  const registerClient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (clientId.trim()) {
+      if (socketRef.current) {
+        socketRef.current.emit('register', clientId);
+      }
+      setRegistered(true);
+    }
+  };
+  
+  const sendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (message.trim() && recipient) {
+      if (socketRef.current) {
+        socketRef.current.emit('sendMessage', {
+          to: recipient,
+          from: clientId,
+          message
+        });
+      }
+      
+      setMessage('');
+    }
+  };
+  
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <div className="container mx-auto p-4 max-w-md">
+      <h1 className="text-2xl font-bold mb-4">Simple Chat</h1>
+      
+      {!registered ? (
+        // Registration form
+        <form onSubmit={registerClient} className="mb-4">
+          <div className="mb-2">
+            <label className="block mb-1">Enter your ID:</label>
+            <input
+              type="text"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              className="w-full border p-2 rounded"
+              placeholder="Your unique ID"
+              required
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+          <button 
+            type="submit" 
+            className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
           >
-            Read our docs
-          </a>
+            Register
+          </button>
+        </form>
+      ) : (
+        // Chat interface
+        <div>
+          <div className="mb-4">
+            <p className="font-semibold">Your ID: {clientId}</p>
+            <p className="text-sm">Available clients: {availableClients.length}</p>
+          </div>
+          
+          {/* Message form */}
+          <form onSubmit={sendMessage} className="mb-4">
+            <div className="mb-2">
+              <label className="block mb-1">Send to:</label>
+              <select
+                value={recipient}
+                onChange={(e) => setRecipient(e.target.value)}
+                className="w-full border p-2 rounded"
+                required
+              >
+                <option value="">Select recipient</option>
+                {availableClients.map(client => (
+                  <option key={client} value={client}>{client}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="mb-2">
+              <label className="block mb-1">Message:</label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="w-full border p-2 rounded"
+                placeholder="Type your message"
+                rows={3}
+                required
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+              disabled={!recipient}
+            >
+              Send Message
+            </button>
+          </form>
+          
+          {/* Message history */}
+          <div className="border rounded p-2 h-64 overflow-y-auto">
+            <h2 className="font-semibold mb-2">Messages:</h2>
+            
+            {messages.length === 0 ? (
+              <p className="text-gray-500">No messages yet</p>
+            ) : (
+              <div className="space-y-2">
+                {messages.map((msg, index) => (
+                  <div 
+                    key={index} 
+                    className={`p-2 rounded ${
+                      msg.type === 'sent' 
+                        ? 'bg-blue-100 ml-8' 
+                        : msg.type === 'received' 
+                        ? 'bg-green-100 mr-8' 
+                        : 'bg-red-100'
+                    }`}
+                  >
+                    {msg.type === 'sent' && (
+                      <p className="text-xs text-gray-600">To: {msg.to}</p>
+                    )}
+                    {msg.type === 'received' && (
+                      <p className="text-xs text-gray-600">From: {msg.from}</p>
+                    )}
+                    {msg.type === 'error' ? (
+                      <p className="text-red-600">{msg.error}</p>
+                    ) : (
+                      <p>{msg.message}</p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      {new Date(msg.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
     </div>
   );
 }
