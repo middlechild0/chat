@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface TerminalTypingProps {
   text: string;
@@ -6,7 +6,11 @@ interface TerminalTypingProps {
   className?: string;
 }
 
-const TerminalTyping: React.FC<TerminalTypingProps> = ({ text, speed = 50, className = "" }) => {
+export default function TerminalTyping({ 
+  text, 
+  speed = 50, 
+  className = "" 
+}: TerminalTypingProps) {
   const [displayedText, setDisplayedText] = useState('');
   const indexRef = useRef(0);
 
@@ -24,6 +28,4 @@ const TerminalTyping: React.FC<TerminalTypingProps> = ({ text, speed = 50, class
   }, [text, speed]);
 
   return <span className={className}>{displayedText}</span>;
-};
-
-export default TerminalTyping;
+}

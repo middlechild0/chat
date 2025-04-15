@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useRef, useEffect } from 'react';
 
-const useSoundEffects = () => {
+export function useSoundEffects() {
   const keySound = useRef<HTMLAudioElement | null>(null);
   const connectSound = useRef<HTMLAudioElement | null>(null);
   const alertSound = useRef<HTMLAudioElement | null>(null);
@@ -26,6 +26,4 @@ const useSoundEffects = () => {
   const playAlert = () => alertSound.current?.play().catch(() => {});
 
   return { playKeystroke, playConnect, playAlert };
-};
-
-export default useSoundEffects;
+}

@@ -1,17 +1,15 @@
-import React from 'react';
-
-const FsocietyLogo: React.FC = () => (
-  <pre className="text-white-500 text-xs leading-tight">
-    {`
+export default function FsocietyLogo() {
+  return (
+    <pre className="text-green-300 text-base leading-tight font-bold">
+      {`
      .--.     .--. 
     |o_o |   |o_o | 
     |:_/ |   |:_/ | 
    //   \\ \\ //   \\ \\ 
   (|     | )(|     | )
- /'\\_   _/'\\\\'\\_   _/'\\
+ /'\\_   _/'\\\\'\_   _/'\\
  \\___)=(___/ \\___)=(___)
-    `}
-  </pre>
-);
-
-export default FsocietyLogo;
+      `}
+    </pre>
+  );
+}

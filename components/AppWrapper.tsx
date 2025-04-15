@@ -1,7 +1,11 @@
-import React from "react";
+import React from 'react';
 
-const AppWrapper: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
-  return <div className="text-white bg-black min-h-screen">{children}</div>;
+interface AppWrapperProps {
+  children: React.ReactNode;
+}
+
+const AppWrapper: React.FC<AppWrapperProps> = ({ children }) => {
+  return <>{children}</>;
 };
 
 export default AppWrapper;
