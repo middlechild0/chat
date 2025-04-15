@@ -23,6 +23,8 @@ app.prepare().then(() => {
       console.log(`Client registered: ${clientId}`);
       socket.clientId = clientId;
       clients.set(clientId, socket);
+      // Emit updated client list to all clients
+      io.emit('clientList', Array.from(clients.keys()));
     });
 
     socket.on('sendMessage', (message) => {
@@ -34,10 +36,20 @@ app.prepare().then(() => {
         recipientSocket.emit('receiveMessage', {
           from,
           message: msg,
-          timeStamp: new Date().toISOString()
+          timestamp: new Date().toISOString()
+        });
+        // Notify sender message was sent
+        socket.emit('messageSent', {
+          to,
+          message: msg,
+          timestamp: new Date().toISOString()
         });
       } else {
-        socket.emit('userOffline', to);
+        socket.emit('messageError', {
+          to,
+          error: `User ${to} is offline`,
+          timestamp: new Date().toISOString()
+        });
         console.log(`User ${to} is offline`);
       }
     });
@@ -47,6 +59,8 @@ app.prepare().then(() => {
         if (clientSocket === socket) {
           clients.delete(clientId);
           console.log(`Client disconnected: ${clientId}`);
+          // Emit updated client list to all clients
+          io.emit('clientList', Array.from(clients.keys()));
           break;
         }
       }
